@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/joho/godotenv v1.4.0
 	github.com/playwright-community/playwright-go v0.2000.1
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect

@@ -2,53 +2,80 @@ package jobs
 
 import (
 	"log"
+	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/playwright-community/playwright-go"
 )
 
 func MiBanco() {
+	err := godotenv.Load(".env")
+	errCheck(err)
 	pw, err := playwright.Run()
-	if err != nil {
-		log.Fatalf("could not launch playwright: %v", err)
-	}
+	errCheck(err)
 	browser, err := pw.Chromium.Launch()
-	if err != nil {
-		log.Fatalf("could not launch Chromium: %v", err)
-	}
-	page, err := browser.NewPage()
-	if err != nil {
-		log.Fatalf("could not create page: %v", err)
-	}
-	if _, err = page.Goto("https://www.popular.com/", playwright.PageGotoOptions{
+	errCheck(err)
+	useragent := "Mozilla/5.0 (Windows Phone 10.0; Android 6.0.1; Microsoft; Lumia 950) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Mobile Safari/537.36 Edge/15.14977"
+	page, err := browser.NewPage(playwright.BrowserNewContextOptions{
+		UserAgent: &useragent,
+	})
+	errCheck(err)
+	if _, err = page.Goto("https://www.bancopopular.com/cibp-web/actions/login#_home", playwright.PageGotoOptions{
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 	}); err != nil {
 		log.Fatalf("could not goto: %v", err)
 	}
-	err = page.Click("#btn-close-modalChooseRegion")
-	if err != nil {
-		log.Fatalf("Error: %v", err)
+	takeScreenshot(&page)
+	err = page.Fill("#username", os.Getenv("USERNAME"))
+	errCheck(err)
+	time.Sleep(1 * time.Second)
+	err = page.Keyboard().Press("Enter")
+	errCheck(err)
+	takeScreenshot(&page)
+	err = page.Fill("#answer", os.Getenv("PASSWORD"))
+	errCheck(err)
+	err = page.Keyboard().Press("Enter")
+	errCheck(err)
+	time.Sleep(5 * time.Second)
+	takeScreenshot(&page)
+	if _, err = page.Goto("https://www.bancopopular.com/cibp-web/actions/login#_accounts", playwright.PageGotoOptions{
+		WaitUntil: playwright.WaitUntilStateNetworkidle,
+	}); err != nil {
+		log.Fatalf("could not goto: %v", err)
 	}
-	time.Sleep(3 * time.Second)
-	err = page.Click("#btn-login")
-	if err != nil {
-		log.Fatalf("Error: %v", err)
+	balanceLabel, err := page.Locator(".balance")
+	errCheck(err)
+	balance, err := balanceLabel.InnerText()
+	errCheck(err)
+	log.Println(balance)
+	err = balanceLabel.Click()
+	errCheck(err)
+	balanceAnchor, err := page.Locator("a[text=\"Current Statement\"]")
+	errCheck(err)
+	err = balanceAnchor.Click()
+	errCheck(err)
+	takeScreenshot(&page)
+	if err = browser.Close(); err != nil {
+		errCheck(err)
 	}
-	time.Sleep(3 * time.Second)
-	err = page.Click("#btn-login-mibanco")
-	if err != nil {
-		log.Fatalf("Error: %v", err)
+	if err = pw.Stop(); err != nil {
+		errCheck(err)
 	}
-	time.Sleep(3 * time.Second)
-	if _, err = page.Screenshot(playwright.PageScreenshotOptions{
+}
+
+func errCheck(err error) {
+	if err != nil {
+		log.Fatalf("Error: %s", err.Error())
+	}
+}
+
+func takeScreenshot(pageP *playwright.Page) {
+	page := *pageP
+	log.Println("Screenshotting...")
+	if _, err := page.Screenshot(playwright.PageScreenshotOptions{
 		Path: playwright.String("foo.png"),
 	}); err != nil {
 		log.Fatalf("could not create screenshot: %v", err)
-	}
-	if err = browser.Close(); err != nil {
-		log.Fatalf("could not close browser: %v", err)
-	}
-	if err = pw.Stop(); err != nil {
-		log.Fatalf("could not stop Playwright: %v", err)
 	}
 }
